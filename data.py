@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 
 # Link direto para export CSV da aba do Google Sheets
-URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTI1XmAnbQk_zwRZbWjfIlugdZScvM3j_TybcHl-g5Ib4mdfPTOio3Z45yNVVCQGQ5eXQI0iG_fH_-0/pubhtml?gid=2000195997&single=true"
+URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTI1XmAnbQk_zwRZbWjfIlugdZScvM3j_TybcHl-g5Ib4mdfPTOio3Z45yNVVCQGQ5eXQI0iG_fH_-0/pub?gid=2000195997&single=true&output=csv"
 
 
 def limpar_valor(valor):
