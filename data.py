@@ -61,17 +61,18 @@ def carregar_dados():
 
     df = df[df["valor_final"] < 50_000_000]
 
+    # ⬅ Garantir que Data Lançamento e Data de Pagamento sejam datetime normalizados
     df["Data Lançamento"] = pd.to_datetime(
         df["Data Lançamento"],
         dayfirst=True,
         errors="coerce"
-    )
+    ).dt.normalize()
 
     df["Data de Pagamento"] = pd.to_datetime(
         df["Data de Pagamento"],
         dayfirst=True,
         errors="coerce"
-    )
+    ).dt.normalize()
 
     df = df.dropna(subset=["Data Lançamento"])
 
@@ -109,6 +110,11 @@ def carregar_dados():
         lambda x: x["valor_final"]
         if "receita" not in x["Classificação"]
         and pd.notna(x["Data de Pagamento"])
+        else 0,
+        axis=1,
+    )
+
+    return df
         else 0,
         axis=1,
     )
