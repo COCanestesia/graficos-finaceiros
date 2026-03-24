@@ -209,11 +209,10 @@ with aba2:
 
     df_evolucao = df_total.copy()
 
-    # Criar coluna datetime para ordenar corretamente
-    df_evolucao["Mes_dt"] = pd.to_datetime(df_evolucao["Data Lançamento"].dt.to_period("M").dt.to_timestamp())
+    # Transformar Data Lançamento em datetime apenas com mês/ano
+    df_evolucao["Mes"] = df_evolucao["Data Lançamento"].dt.to_period("M").dt.to_timestamp()
 
-    # Agrupar por mês (datetime)
-    df_mes = df_evolucao.groupby("Mes_dt").agg({
+    df_mes = df_evolucao.groupby("Mes").agg({
         "Receita realizada": "sum",
         "Despesa realizada": "sum"
     }).reset_index()
@@ -224,28 +223,24 @@ with aba2:
         (df_mes["Despesa realizada"] > 0)
     ]
 
-    # Acumulados
+    # Calcular acumulado
     df_mes["Receita Acumulada"] = df_mes["Receita realizada"].cumsum()
     df_mes["Despesa Acumulada"] = df_mes["Despesa realizada"].cumsum()
 
-    # Transformar para formato longo para o gráfico
+    # Transformar em formato longo
     df_long = df_mes.melt(
-        id_vars="Mes_dt",
+        id_vars="Mes",
         value_vars=["Receita Acumulada", "Despesa Acumulada"],
         var_name="Tipo",
         value_name="Valor"
     )
 
-    # Gráfico Altair com eixo temporal mostrando só mês/ano
+    # Gráfico Altair
     st.altair_chart(
         alt.Chart(df_long).mark_line(point=True).encode(
-            x=alt.X(
-                "Mes_dt:T",
-                title="Mês",
-                axis=alt.Axis(format="%b/%Y")  # mostra apenas mês/ano
-            ),
-            y="Valor",
-            color="Tipo"
+            x=alt.X("Mes:T", title="Mês", axis=alt.Axis(format="%b/%y")),  # eixo de tempo
+            y="Valor:Q",
+            color="Tipo:N"
         ),
         use_container_width=True
     )
