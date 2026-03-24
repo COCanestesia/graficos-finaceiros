@@ -254,12 +254,12 @@ with aba3:
     
     df_comp = df_total.copy()
 
-    # Transformar Data Lançamento em timestamp com mês/ano
-    df_comp["Mes"] = df_comp["Data Lançamento"].dt.to_period("M").dt.to_timestamp()
+    # Criar coluna de mês/ano como datetime
+    df_comp["Mes_dt"] = pd.to_datetime(df_comp["Data Lançamento"].dt.to_period("M").dt.to_timestamp())
 
     # Agrupar por mês
     df_mes = (
-        df_comp.groupby("Mes")
+        df_comp.groupby("Mes_dt")
         .agg({
             "Receita realizada": "sum",
             "Despesa realizada": "sum",
@@ -267,16 +267,25 @@ with aba3:
             "Despesa projetada": "sum"
         })
         .reset_index()
-        .sort_values("Mes")
+        .sort_values("Mes_dt")
     )
 
-    # Resultado e crescimento
+    # Resultado
     df_mes["Resultado"] = df_mes["Receita realizada"] - df_mes["Despesa realizada"]
-    df_mes["Crescimento Receita (%)"] = df_mes["Receita realizada"].pct_change().fillna(0) * 100
-    df_mes["Crescimento Despesa (%)"] = df_mes["Despesa realizada"].pct_change().fillna(0) * 100
 
-    # KPIs
+    df_mes["Crescimento Receita (%)"] = (
+        df_mes["Receita realizada"].pct_change().fillna(0) * 100
+    )
+
+    df_mes["Crescimento Despesa (%)"] = (
+        df_mes["Despesa realizada"].pct_change().fillna(0) * 100
+    )
+
+    # ================================
+    # 📊 KPIs DE EVOLUÇÃO
+    # ================================
     col1, col2, col3 = st.columns(3)
+
     df_mes_filtrado = df_mes[
         (df_mes["Receita realizada"] > 0) |
         (df_mes["Despesa realizada"] > 0)
@@ -304,49 +313,63 @@ with aba3:
             f"R$ {ultima['Resultado']:,.0f}"
         )
 
-    # Gráfico Receita x Despesa
+    # ================================
+    # 📈 GRÁFICO RECEITA X DESPESA
+    # ================================
     df_long = df_mes.melt(
-        id_vars="Mes",
+        id_vars="Mes_dt",
         value_vars=["Receita realizada", "Despesa realizada"],
         var_name="Tipo",
         value_name="Valor"
     )
 
     chart = alt.Chart(df_long).mark_line(point=True).encode(
-        x=alt.X("Mes:T", title="Mês", axis=alt.Axis(format="%b/%y")),
+        x=alt.X("Mes_dt:T", title="Mês", axis=alt.Axis(format="%b/%y")),
         y=alt.Y("Valor:Q", title="Valor (R$)"),
-        color=alt.Color(
-            "Tipo:N",
-            scale=alt.Scale(
-                domain=["Receita realizada", "Despesa realizada"],
-                range=["#2ecc71", "#e74c3c"]
-            ),
-            title=""
-        ),
-        tooltip=[ "Mes", "Tipo", alt.Tooltip("Valor", format=",.2f") ]
-    ).properties(title="📈 Evolução Mensal: Receita x Despesa")
+        color="Tipo",
+        tooltip=[alt.Tooltip("Mes_dt:T", title="Mês", format="%b/%Y"),
+                 "Tipo",
+                 alt.Tooltip("Valor", format=",.2f")]
+    ).properties(
+        title="📈 Evolução Mensal: Receita x Despesa"
+    )
 
     st.altair_chart(chart, use_container_width=True)
 
-    # Gráfico Resultado
+    # ================================
+    # 📊 GRÁFICO RESULTADO
+    # ================================
     chart_result = alt.Chart(df_mes).mark_bar().encode(
-        x=alt.X("Mes:T", title="Mês", axis=alt.Axis(format="%b/%y")),
+        x=alt.X(
+            "Mes_dt:T",
+            title="Mês",
+            axis=alt.Axis(format="%b/%y")
+        ),
         y=alt.Y("Resultado:Q", title="Resultado (R$)"),
         color=alt.condition(
             alt.datum.Resultado > 0,
             alt.value("#2ecc71"),
             alt.value("#e74c3c")
         ),
-        tooltip=[ alt.Tooltip("Mes:T", format="%b/%Y"), alt.Tooltip("Resultado:Q", format=",.2f") ]
-    ).properties(title="💰 Resultado Mensal (Lucro / Prejuízo)")
+        tooltip=[
+            alt.Tooltip("Mes_dt:T", title="Mês", format="%b/%Y"),
+            alt.Tooltip("Resultado:Q", format=",.2f")
+        ]
+    ).properties(
+        title="💰 Resultado Mensal (Lucro / Prejuízo)"
+    )
 
     st.altair_chart(chart_result, use_container_width=True)
 
-    # Formatar coluna Mes para exibição em dataframe
-    df_mes["Mes"] = df_mes["Mes"].dt.strftime("%b/%Y")
+    # ================================
+    # TABELA DE COMPARAÇÃO
+    # ================================
+    # formatar para exibição
+    df_mes_display = df_mes.copy()
+    df_mes_display["Mes"] = df_mes_display["Mes_dt"].dt.strftime("%b/%Y")
 
     st.dataframe(
-        df_mes.style.format({
+        df_mes_display.style.format({
             "Receita realizada": "R$ {:,.2f}",
             "Despesa realizada": "R$ {:,.2f}",
             "Receita projetada": "R$ {:,.2f}",
