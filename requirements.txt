@@ -2,12 +2,14 @@
 streamlit>=1.32.0
 numpy>=1.26.0
 pandas>=2.1.1
-altair>=5.0.1
 python-dateutil>=2.8.2
 pytz>=2023.3
+
+# Gráficos
+plotly>=5.20.0
 
 # Google Sheets
 gsheets-connector>=1.4.0
 
-# Opcional (para melhor compatibilidade)
+# Opcional
 pyyaml>=6.0
