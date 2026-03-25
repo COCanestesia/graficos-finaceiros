@@ -1,9 +1,10 @@
 import streamlit as st
 
-def mostrar_kpis(df):
+def mostrar_kpis(df, saldo_inicial=0):
     receita_real = df["Receita realizada"].sum()
     despesa_real = df["Despesa realizada"].sum()
-    resultado = receita_real - despesa_real
+    # Agora o resultado considera o saldo inicial
+    resultado = receita_real - despesa_real + saldo_inicial
     perc = (despesa_real / receita_real * 100) if receita_real > 0 else 0
 
     col1, col2, col3, col4 = st.columns(4)
