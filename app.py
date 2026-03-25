@@ -249,17 +249,20 @@ with aba2:
 # ================================
 with aba3:
 
+    # ================================
+    # 📊 COMPARAÇÃO AUTOMÁTICA ENTRE MESES
+    # ================================
     st.markdown("---")
     st.subheader("📊 Comparação Automática de Meses")
     
     df_comp = df_total.copy()
 
-    # Criar coluna de mês/ano como datetime
-    df_comp["Mes_dt"] = pd.to_datetime(df_comp["Data Lançamento"].dt.to_period("M").dt.to_timestamp())
+    # Criar coluna de mês/ano
+    df_comp["Mes"] = df_comp["Data Lançamento"].dt.to_period("M").dt.to_timestamp()
 
     # Agrupar por mês
     df_mes = (
-        df_comp.groupby("Mes_dt")
+        df_comp.groupby("Mes")
         .agg({
             "Receita realizada": "sum",
             "Despesa realizada": "sum",
@@ -267,7 +270,7 @@ with aba3:
             "Despesa projetada": "sum"
         })
         .reset_index()
-        .sort_values("Mes_dt")
+        .sort_values("Mes")
     )
 
     # Resultado
@@ -317,33 +320,47 @@ with aba3:
     # 📈 GRÁFICO RECEITA X DESPESA
     # ================================
     df_long = df_mes.melt(
-        id_vars="Mes_dt",
+        id_vars="Mes",
         value_vars=["Receita realizada", "Despesa realizada"],
         var_name="Tipo",
         value_name="Valor"
     )
 
+    # Corrigir tipos
+    df_long["Mes_dt"] = pd.to_datetime(df_long["Mes"])
+    df_long["Valor"] = pd.to_numeric(df_long["Valor"], errors='coerce').fillna(0)
+
     chart = alt.Chart(df_long).mark_line(point=True).encode(
         x=alt.X("Mes_dt:T", title="Mês", axis=alt.Axis(format="%b/%y")),
         y=alt.Y("Valor:Q", title="Valor (R$)"),
-        color="Tipo",
-        tooltip=[alt.Tooltip("Mes_dt:T", title="Mês", format="%b/%Y"),
-                 "Tipo",
-                 alt.Tooltip("Valor", format=",.2f")]
+        color=alt.Color(
+            "Tipo",
+            scale=alt.Scale(
+                domain=["Receita realizada", "Despesa realizada"],
+                range=["#2ecc71", "#e74c3c"]
+            ),
+            title=""
+        ),
+        tooltip=[
+            alt.Tooltip("Mes_dt:T", title="Mês", format="%b/%Y"),
+            "Tipo",
+            alt.Tooltip("Valor", format=",.2f")
+        ]
     ).properties(
         title="📈 Evolução Mensal: Receita x Despesa"
     )
 
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(chart, width='stretch')
 
     # ================================
     # 📊 GRÁFICO RESULTADO
     # ================================
     chart_result = alt.Chart(df_mes).mark_bar().encode(
         x=alt.X(
-            "Mes_dt:T",
+            "Mes:T",
             title="Mês",
-            axis=alt.Axis(format="%b/%y")
+            axis=alt.Axis(format="%b/%y"),
+            timeUnit="yearmonth"
         ),
         y=alt.Y("Resultado:Q", title="Resultado (R$)"),
         color=alt.condition(
@@ -352,24 +369,22 @@ with aba3:
             alt.value("#e74c3c")
         ),
         tooltip=[
-            alt.Tooltip("Mes_dt:T", title="Mês", format="%b/%Y"),
+            alt.Tooltip("Mes:T", title="Mês", format="%b/%Y"),
             alt.Tooltip("Resultado:Q", format=",.2f")
         ]
     ).properties(
         title="💰 Resultado Mensal (Lucro / Prejuízo)"
     )
 
-    st.altair_chart(chart_result, use_container_width=True)
+    st.altair_chart(chart_result, width='stretch')
 
     # ================================
-    # TABELA DE COMPARAÇÃO
+    # 📋 TABELA FORMATADA
     # ================================
-    # formatar para exibição
-    df_mes_display = df_mes.copy()
-    df_mes_display["Mes"] = df_mes_display["Mes_dt"].dt.strftime("%b/%Y")
+    df_mes["Mes"] = pd.to_datetime(df_mes["Mes"]).dt.strftime("%b/%Y")
 
     st.dataframe(
-        df_mes_display.style.format({
+        df_mes.style.format({
             "Receita realizada": "R$ {:,.2f}",
             "Despesa realizada": "R$ {:,.2f}",
             "Receita projetada": "R$ {:,.2f}",
@@ -378,5 +393,5 @@ with aba3:
             "Crescimento Receita (%)": "{:.1f}%",
             "Crescimento Despesa (%)": "{:.1f}%"
         }),
-        use_container_width=True
+        width='stretch'
     )
