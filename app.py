@@ -57,11 +57,14 @@ with aba1:
 
     st.altair_chart(
         alt.Chart(df_comp).mark_bar(size=80).encode(
-            x="Tipo",
-            y="Valor",
+            x="Tipo:N",
+            y="Valor:Q",
             color=alt.Color(
-                "Tipo",
-                scale=alt.Scale(domain=["Receita", "Despesa"], range=["#2ecc71", "#e74c3c"])
+                "Tipo:N",
+                scale=alt.Scale(
+                    domain=["Receita", "Despesa"],
+                    range=["#2ecc71", "#e74c3c"]
+                )
             )
         ),
         use_container_width=True
@@ -80,7 +83,7 @@ with aba1:
             "Valor": [receita_proj, receita_real]
         })
         st.altair_chart(
-            alt.Chart(df_rec).mark_bar().encode(x="Tipo", y="Valor", color="Tipo"),
+            alt.Chart(df_rec).mark_bar().encode(x="Tipo:N", y="Valor:Q", color="Tipo:N"),
             use_container_width=True
         )
 
@@ -92,7 +95,7 @@ with aba1:
             "Valor": [despesa_proj, despesa_real]
         })
         st.altair_chart(
-            alt.Chart(df_des).mark_bar().encode(x="Tipo", y="Valor", color="Tipo"),
+            alt.Chart(df_des).mark_bar().encode(x="Tipo:N", y="Valor:Q", color="Tipo:N"),
             use_container_width=True
         )
 
@@ -132,23 +135,30 @@ with aba1:
     # =========================
     # 📊 GRÁFICO MELHORADO
     # =========================
+    st.dataframe(
+        df_cat.style.format({
+            "Despesa realizada": "R$ {:,.2f}",
+            "perc_receita": "{:.1%}"
+        }),
+        use_container_width=True
+    )
+
     chart = alt.Chart(df_cat.head(10)).mark_bar().encode(
-       x=alt.X("Plano de Contas", sort="-y"),
-       y=alt.Y("Despesa realizada", title="Valor (R$)"),
-       tooltip=[
-           "Plano de Contas",
-           alt.Tooltip("Despesa realizada", format=",.2f"),
-           alt.Tooltip("% Receita", format=".1%")
+        x=alt.X("Plano de Contas:N", sort="-y"),
+        y=alt.Y("Despesa realizada:Q", title="Valor (R$)"),
+        tooltip=[
+            "Plano de Contas:N",
+            alt.Tooltip("Despesa realizada:Q", format=",.2f"),
+            alt.Tooltip("perc_receita:Q", format=".1%")
         ],
-       color=alt.condition(
-           alt.datum["% Receita"] > 0.3,
-           alt.value("#e74c3c"),  # vermelho (crítico)
-           alt.value("#3498db")   # azul (normal)
+        color=alt.condition(
+            alt.datum.perc_receita > 0.3,
+            alt.value("#e74c3c"),
+            alt.value("#3498db")
         )
     )
 
     st.altair_chart(chart, use_container_width=True)
-
 
     # =========================
     # 📋 TABELA DETALHADA
@@ -169,16 +179,24 @@ with aba1:
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Despesas", f"R$ {df_cat['Despesa realizada'].sum():,.0f}")
     col2.metric("% da Receita", f"{(df_cat['Despesa realizada'].sum()/receita_total):.1%}")
-    col3.metric("Categorias críticas (>30%)", f"{(df_cat['% Receita'] > 0.3).sum()}")
+    col3.metric("Categorias críticas (>30%)", f"{(df_cat['perc_receita'] > 0.3).sum()}")
 
     # =========================
     # CONVÊNIOS
     # =========================
     st.subheader("💳 Convênios que mais geram receita")
-    df_conv = df[df["Receita realizada"] > 0].groupby("Itens")["Receita realizada"].sum().reset_index()
+
+    df_conv = df[df["Receita realizada"] > 0] \
+        .groupby("Itens")["Receita realizada"] \
+        .sum().reset_index()
+
     df_conv = df_conv.sort_values(by="Receita realizada", ascending=False)
+
     st.altair_chart(
-        alt.Chart(df_conv.head(10)).mark_bar().encode(x=alt.X("Itens", sort="-y"), y="Receita realizada"),
+        alt.Chart(df_conv.head(10)).mark_bar().encode(
+            x=alt.X("Itens:N", sort="-y"),
+            y=alt.Y("Receita realizada:Q")
+        ),
         use_container_width=True
     )
 
@@ -254,8 +272,8 @@ with aba2:
                 title="Mês",
                 axis=alt.Axis(format="%b/%Y")  # mostra apenas mês/ano
             ),
-            y="Valor",
-            color="Tipo"
+            y="Valor:Q",
+            color="Tipo:N"
         ),
         use_container_width=True
     )
@@ -289,8 +307,8 @@ with aba3:
     chart = alt.Chart(df_long).mark_line(point=True).encode(
         x=alt.X("Mes:T", title="Mês", axis=alt.Axis(format="%b/%y")),
         y=alt.Y("Valor:Q", title="Valor (R$)"),
-        color=alt.Color("Tipo", scale=alt.Scale(domain=["Receita realizada", "Despesa realizada"], range=["#2ecc71", "#e74c3c"])),
-        tooltip=["Mes", "Tipo", alt.Tooltip("Valor", format=",.2f")]
+        color=alt.Color("Tipo:N", scale=alt.Scale(domain=["Receita realizada", "Despesa realizada"], range=["#2ecc71", "#e74c3c"])),
+        tooltip=["Mes:T", "Tipo:N", alt.Tooltip("Valor:Q", format=",.2f")]
     ).properties(title="📈 Evolução Mensal: Receita x Despesa")
     st.altair_chart(chart, use_container_width=True)
 
