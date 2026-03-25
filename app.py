@@ -195,10 +195,20 @@ with aba1:
     tipo = st.selectbox("Tipo", ["Barra", "Linha"])
     df_group = df.groupby(eixo)[metrica].sum().reset_index().sort_values(by=metrica, ascending=False)
 
+    # 🔥 CORREÇÃO ALTair (colunas dinâmicas)
+    x_col = f"{eixo}:N"
+    y_col = f"{metrica}:Q"
+
     if tipo == "Barra":
-        chart = alt.Chart(df_group).mark_bar().encode(x=alt.X(eixo, sort="-y"), y=metrica)
+        chart = alt.Chart(df_group).mark_bar().encode(
+            x=alt.X(x_col, sort="-y"),
+            y=alt.Y(y_col)
+        )
     else:
-        chart = alt.Chart(df_group).mark_line(point=True).encode(x=eixo, y=metrica)
+        chart = alt.Chart(df_group).mark_line(point=True).encode(
+            x=alt.X(x_col),
+            y=alt.Y(y_col)
+        )
 
     st.altair_chart(chart, use_container_width=True)
 
