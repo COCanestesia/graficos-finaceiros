@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import altair as alt
+import plotly.express as px
 from datetime import datetime
 
 from data import carregar_dados
@@ -55,20 +55,18 @@ with aba1:
         "Valor": [receita_real, despesa_real]
     })
 
-    st.altair_chart(
-        alt.Chart(df_comp).mark_bar(size=80).encode(
-            x="Tipo:N",
-            y="Valor:Q",
-            color=alt.Color(
-                "Tipo:N",
-                scale=alt.Scale(
-                    domain=["Receita", "Despesa"],
-                    range=["#2ecc71", "#e74c3c"]
-                )
-            )
-        ),
-        use_container_width=True
+    fig = px.bar(
+        df_comp,
+        x="Tipo",
+        y="Valor",
+        color="Tipo",
+        color_discrete_map={
+            "Receita": "#2ecc71",   
+            "Despesa": "#e74c3c"
+        }
     )
+
+    st.plotly_chart(fig, use_container_width=True)
 
     # =========================
     # PROJETADO VS REAL
@@ -82,10 +80,8 @@ with aba1:
             "Tipo": ["Projetado", "Realizado"],
             "Valor": [receita_proj, receita_real]
         })
-        st.altair_chart(
-            alt.Chart(df_rec).mark_bar().encode(x="Tipo:N", y="Valor:Q", color="Tipo:N"),
-            use_container_width=True
-        )
+        fig = px.bar(df_rec, x="Tipo", y="Valor", color="Tipo")
+        st.plotly_chart(fig, use_container_width=True)
 
     with colB:
         st.subheader("💸 Despesa")
@@ -94,10 +90,8 @@ with aba1:
             "Tipo": ["Projetado", "Realizado"],
             "Valor": [despesa_proj, despesa_real]
         })
-        st.altair_chart(
-            alt.Chart(df_des).mark_bar().encode(x="Tipo:N", y="Valor:Q", color="Tipo:N"),
-            use_container_width=True
-        )
+        fig = px.bar(df_des, x="Tipo", y="Valor", color="Tipo")
+        st.plotly_chart(fig, use_container_width=True)
 
     # =========================
     # 📊 ONDE A EMPRESA PERDE DINHEIRO
@@ -136,25 +130,15 @@ with aba1:
     # 📊 GRÁFICO MELHORADO
     # =========================
     
-    chart = alt.Chart(df_cat.head(10)).transform_calculate(
-    perc_receita="datum['% Receita']"
-    ).mark_bar().encode(
-        x=alt.X("Plano de Contas:N", sort="-y"),
-        y=alt.Y("Despesa realizada:Q", title="Valor (R$)"),
-        tooltip=[
-            "Plano de Contas:N",
-            alt.Tooltip("Despesa realizada:Q", format=",.2f"),
-            alt.Tooltip("perc_receita:Q", format=".1%")
-        ],
-        color=alt.condition(
-            alt.datum.perc_receita > 0.3,
-            alt.value("#e74c3c"),
-            alt.value("#3498db")
-        )
+    fig = px.bar(
+        df_cat.head(10),
+        x="Plano de Contas",
+        y="Despesa realizada",
+        color="% Receita",
+        color_continuous_scale="Reds"
     )
 
-    st.altair_chart(chart, use_container_width=True)
-
+    st.plotly_chart(fig, use_container_width=True)
 
 
     # =========================
@@ -203,13 +187,13 @@ with aba1:
 
     df_conv = df_conv.sort_values(by="Receita realizada", ascending=False)
 
-    st.altair_chart(
-        alt.Chart(df_conv.head(10)).mark_bar().encode(
-            x=alt.X("Itens:N", sort="-y"),
-            y=alt.Y("Receita realizada:Q")
-        ),
-        use_container_width=True
+    fig = px.bar(
+        df_conv.head(10),
+        x="Itens",
+        y="Receita realizada"
     )
+
+    st.plotly_chart(fig, use_container_width=True)
 
     # =========================
     # 🛠️ DASHBOARD PERSONALIZADO
@@ -229,17 +213,11 @@ with aba1:
     y_col = f"{metrica}:Q"
 
     if tipo == "Barra":
-        chart = alt.Chart(df_group).mark_bar().encode(
-            x=alt.X(x_col, sort="-y"),
-            y=alt.Y(y_col)
-        )
+        fig = px.bar(df_group, x=eixo, y=metrica)
     else:
-        chart = alt.Chart(df_group).mark_line(point=True).encode(
-            x=alt.X(x_col),
-            y=alt.Y(y_col)
-        )
+        fig = px.line(df_group, x=eixo, y=metrica)
 
-    st.altair_chart(chart, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True)
 
 # ================================
 # 📈 ABA 2 - EVOLUÇÃO
@@ -276,18 +254,14 @@ with aba2:
     )
 
     # Gráfico Altair com eixo temporal mostrando só mês/ano
-    st.altair_chart(
-        alt.Chart(df_long).mark_line(point=True).encode(
-            x=alt.X(
-                "Mes_dt:T",
-                title="Mês",
-                axis=alt.Axis(format="%b/%Y")  # mostra apenas mês/ano
-            ),
-            y="Valor:Q",
-            color="Tipo:N"
-        ),
-        use_container_width=True
+    fig = px.line(
+        df_long,
+        x="Mes_dt",
+        y="Valor",
+        color="Tipo"
     )
+
+    st.plotly_chart(fig, use_container_width=True)
 # ================================
 # 📅 ABA 3 - COMPARAÇÃO DE MESES
 # ================================
@@ -315,22 +289,25 @@ with aba3:
 
     # Gráfico Receita x Despesa
     df_long = df_mes.melt(id_vars="Mes", value_vars=["Receita realizada", "Despesa realizada"], var_name="Tipo", value_name="Valor")
-    chart = alt.Chart(df_long).mark_line(point=True).encode(
-        x=alt.X("Mes:T", title="Mês", axis=alt.Axis(format="%b/%y")),
-        y=alt.Y("Valor:Q", title="Valor (R$)"),
-        color=alt.Color("Tipo:N", scale=alt.Scale(domain=["Receita realizada", "Despesa realizada"], range=["#2ecc71", "#e74c3c"])),
-        tooltip=["Mes:T", "Tipo:N", alt.Tooltip("Valor:Q", format=",.2f")]
-    ).properties(title="📈 Evolução Mensal: Receita x Despesa")
-    st.altair_chart(chart, use_container_width=True)
+    fig = px.line(
+        df_long,
+        x="Mes",
+        y="Valor",
+        color="Tipo"
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
 
     # Gráfico Resultado
-    chart_result = alt.Chart(df_mes).mark_bar().encode(
-        x=alt.X("Mes:T", title="Mês", axis=alt.Axis(format="%b/%y"), timeUnit="yearmonth"),
-        y=alt.Y("Resultado:Q", title="Resultado (R$)"),
-        color=alt.condition(alt.datum.Resultado > 0, alt.value("#2ecc71"), alt.value("#e74c3c")),
-        tooltip=[alt.Tooltip("Mes:T", format="%b/%Y"), alt.Tooltip("Resultado:Q", format=",.2f")]
-    ).properties(title="💰 Resultado Mensal (Lucro / Prejuízo)")
-    st.altair_chart(chart_result, use_container_width=True)
+    fig = px.bar(
+        df_mes,
+        x="Mes",
+        y="Resultado",
+        color="Resultado",
+        color_continuous_scale=["#e74c3c", "#2ecc71"]
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
 
     # Tabela comparativa
     df_mes["Mes"] = pd.to_datetime(df_mes["Mes"]).dt.strftime("%b/%Y")
