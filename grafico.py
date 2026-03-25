@@ -55,10 +55,13 @@ def grafico_despesa(df):
 def grafico_categoria(df):
     receita_total = df["Receita realizada"].sum()
 
-    df_cat = df.groupby("Plano de Contas")["Despesa realizada"] \
-        .sum().reset_index() \
-        .sort_values(by="Despesa realizada", ascending=False) \
+    df_cat = (
+        df.groupby("Plano de Contas")["Despesa realizada"]
+        .sum()
+        .reset_index()
+        .sort_values(by="Despesa realizada", ascending=False)
         .head(7)
+    )
 
     if receita_total > 0:
         df_cat["Percentual"] = df_cat["Despesa realizada"] / receita_total
@@ -75,7 +78,3 @@ def grafico_categoria(df):
     )
 
     return fig
-        color="Percentual:Q"
-    )
-    text = chart.mark_text(align="left", dx=5).encode(text=alt.Text("Despesa realizada:Q", format=",.0f"))
-    return chart + text
