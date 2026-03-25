@@ -135,15 +135,10 @@ with aba1:
     # =========================
     # 📊 GRÁFICO MELHORADO
     # =========================
-    st.dataframe(
-        df_cat.style.format({
-            "Despesa realizada": "R$ {:,.2f}",
-            "perc_receita": "{:.1%}"
-        }),
-        use_container_width=True
-    )
-
-    chart = alt.Chart(df_cat.head(10)).mark_bar().encode(
+    
+    chart = alt.Chart(df_cat.head(10)).transform_calculate(
+    perc_receita="datum['% Receita']"
+    ).mark_bar().encode(
         x=alt.X("Plano de Contas:N", sort="-y"),
         y=alt.Y("Despesa realizada:Q", title="Valor (R$)"),
         tooltip=[
@@ -160,10 +155,13 @@ with aba1:
 
     st.altair_chart(chart, use_container_width=True)
 
+
+
     # =========================
     # 📋 TABELA DETALHADA
     # =========================
     st.subheader("📋 Detalhamento dos gastos")
+
     st.dataframe(
         df_cat.style.format({
             "Despesa realizada": "R$ {:,.2f}",
@@ -171,15 +169,28 @@ with aba1:
         }),
         use_container_width=True
     )
-
     # =========================
     # 📉 RESUMO DE IMPACTO
     # =========================
     st.markdown("### 📉 Impacto geral das despesas")
+
     col1, col2, col3 = st.columns(3)
-    col1.metric("Total Despesas", f"R$ {df_cat['Despesa realizada'].sum():,.0f}")
-    col2.metric("% da Receita", f"{(df_cat['Despesa realizada'].sum()/receita_total):.1%}")
-    col3.metric("Categorias críticas (>30%)", f"{(df_cat['perc_receita'] > 0.3).sum()}")
+
+    col1.metric(
+        "Total Despesas",
+        f"R$ {df_cat['Despesa realizada'].sum():,.0f}"
+    )
+
+    col2.metric(
+        "% da Receita",
+        f"{(df_cat['Despesa realizada'].sum()/receita_total):.1%}"
+    )
+
+    col3.metric(
+        "Categorias críticas (>30%)",
+        f"{(df_cat['% Receita'] > 0.3).sum()}"
+    )
+
 
     # =========================
     # CONVÊNIOS
