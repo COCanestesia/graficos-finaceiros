@@ -35,6 +35,9 @@ aba1, aba2, aba3 = st.tabs([
 ])
 
 # ================================
+# 📊 ABA 1 - VISÃO GERAL (CORRIGIDA)
+# ================================
+# ================================
 # 📊 ABA 1 - VISÃO GERAL
 # ================================
 with aba1:
@@ -55,17 +58,19 @@ with aba1:
         "Valor": [receita_real, despesa_real]
     })
 
-    st.altair_chart(
-        alt.Chart(df_comp).mark_bar(size=80).encode(
-            x="Tipo",
-            y="Valor",
-            color=alt.Color(
-                "Tipo",
-                scale=alt.Scale(domain=["Receita", "Despesa"], range=["#2ecc71", "#e74c3c"])
-            )
+    chart_comp = alt.Chart(df_comp).mark_bar(size=80).encode(
+        x=alt.X("Tipo:N"),
+        y=alt.Y("Valor:Q", title="Valor (R$)"),
+        color=alt.Color(
+            "Tipo:N",
+            scale=alt.Scale(domain=["Receita", "Despesa"], range=["#2ecc71", "#e74c3c"])
         ),
-        use_container_width=True
+        tooltip=[
+            alt.Tooltip("Tipo:N", title="Tipo"),
+            alt.Tooltip("Valor:Q", title="Valor (R$)", format=",.2f")
+        ]
     )
+    st.altair_chart(chart_comp, use_container_width=True)
 
     # =========================
     # PROJETADO VS REAL
@@ -79,10 +84,16 @@ with aba1:
             "Tipo": ["Projetado", "Realizado"],
             "Valor": [receita_proj, receita_real]
         })
-        st.altair_chart(
-            alt.Chart(df_rec).mark_bar().encode(x="Tipo", y="Valor", color="Tipo"),
-            use_container_width=True
+        chart_rec = alt.Chart(df_rec).mark_bar().encode(
+            x=alt.X("Tipo:N"),
+            y=alt.Y("Valor:Q", title="Valor (R$)"),
+            color=alt.Color("Tipo:N", scale=alt.Scale(range=["#3498db", "#2ecc71"])),
+            tooltip=[
+                alt.Tooltip("Tipo:N"),
+                alt.Tooltip("Valor:Q", format=",.2f")
+            ]
         )
+        st.altair_chart(chart_rec, use_container_width=True)
 
     with colB:
         st.subheader("💸 Despesa")
@@ -91,10 +102,16 @@ with aba1:
             "Tipo": ["Projetado", "Realizado"],
             "Valor": [despesa_proj, despesa_real]
         })
-        st.altair_chart(
-            alt.Chart(df_des).mark_bar().encode(x="Tipo", y="Valor", color="Tipo"),
-            use_container_width=True
+        chart_des = alt.Chart(df_des).mark_bar().encode(
+            x=alt.X("Tipo:N"),
+            y=alt.Y("Valor:Q", title="Valor (R$)"),
+            color=alt.Color("Tipo:N", scale=alt.Scale(range=["#3498db", "#e74c3c"])),
+            tooltip=[
+                alt.Tooltip("Tipo:N"),
+                alt.Tooltip("Valor:Q", format=",.2f")
+            ]
         )
+        st.altair_chart(chart_des, use_container_width=True)
 
     # =========================
     # 📊 ONDE A EMPRESA PERDE DINHEIRO
@@ -102,57 +119,36 @@ with aba1:
     st.subheader("📊 Onde a empresa está perdendo dinheiro")
 
     receita_total = df["Receita realizada"].sum()
-
-    df_cat = (
-        df.groupby("Plano de Contas")["Despesa realizada"]
-        .sum()
-        .reset_index()
-    )
-
-    # remover zeros
+    df_cat = df.groupby("Plano de Contas")["Despesa realizada"].sum().reset_index()
     df_cat = df_cat[df_cat["Despesa realizada"] > 0]
-
-    # calcular %
     df_cat["% Receita"] = df_cat["Despesa realizada"] / receita_total
-
-    # ordenar
     df_cat = df_cat.sort_values(by="Despesa realizada", ascending=False)
 
-    # =========================
-    # 🚨 DIAGNÓSTICO AUTOMÁTICO
-    # =========================
+    # 🚨 Diagnóstico automático
     top1 = df_cat.iloc[0]
-
     st.error(
-        f"🚨 MAIOR GASTO: {top1['Plano de Contas']} "
-        f"→ R$ {top1['Despesa realizada']:,.0f} "
+        f"🚨 MAIOR GASTO: {top1['Plano de Contas']} → R$ {top1['Despesa realizada']:,.0f} "
         f"({top1['% Receita']:.1%} da receita)"
     )
 
-    # =========================
-    # 📊 GRÁFICO MELHORADO
-    # =========================
-    chart = alt.Chart(df_cat.head(10)).mark_bar().encode(
-       x=alt.X("Plano de Contas", sort="-y"),
-       y=alt.Y("Despesa realizada", title="Valor (R$)"),
-       tooltip=[
-           "Plano de Contas",
-           alt.Tooltip("Despesa realizada", format=",.2f"),
-           alt.Tooltip("% Receita", format=".1%")
-        ],
-       color=alt.condition(
-           alt.datum["% Receita"] > 0.3,
-           alt.value("#e74c3c"),  # vermelho (crítico)
-           alt.value("#3498db")   # azul (normal)
-        )
+    # 📊 Gráfico melhorado
+    chart_cat = alt.Chart(df_cat.head(10)).mark_bar().encode(
+        x=alt.X("Plano de Contas:N", sort="-y"),
+        y=alt.Y("Despesa realizada:Q", title="Valor (R$)"),
+        color=alt.condition(
+            alt.datum["% Receita"] > 0.3,
+            alt.value("#e74c3c"),  # vermelho crítico
+            alt.value("#3498db")   # azul normal
+        ),
+        tooltip=[
+            alt.Tooltip("Plano de Contas:N"),
+            alt.Tooltip("Despesa realizada:Q", format=",.2f"),
+            alt.Tooltip("% Receita:Q", format=".1%")
+        ]
     )
+    st.altair_chart(chart_cat, use_container_width=True)
 
-    st.altair_chart(chart, use_container_width=True)
-
-
-    # =========================
-    # 📋 TABELA DETALHADA
-    # =========================
+    # 📋 Tabela detalhada
     st.subheader("📋 Detalhamento dos gastos")
     st.dataframe(
         df_cat.style.format({
@@ -177,10 +173,17 @@ with aba1:
     st.subheader("💳 Convênios que mais geram receita")
     df_conv = df[df["Receita realizada"] > 0].groupby("Itens")["Receita realizada"].sum().reset_index()
     df_conv = df_conv.sort_values(by="Receita realizada", ascending=False)
-    st.altair_chart(
-        alt.Chart(df_conv.head(10)).mark_bar().encode(x=alt.X("Itens", sort="-y"), y="Receita realizada"),
-        use_container_width=True
-    )
+
+    chart_conv = alt.Chart(df_conv.head(10)).mark_bar().encode(
+        x=alt.X("Itens:N", sort="-y", title="Convênio"),
+        y=alt.Y("Receita realizada:Q", title="Receita (R$)"),
+        color=alt.value("#2ecc71"),
+        tooltip=[
+            alt.Tooltip("Itens:N", title="Convênio"),
+            alt.Tooltip("Receita realizada:Q", title="Receita", format=",.2f")
+        ]
+    ).properties(height=300, width='stretch')
+    st.altair_chart(chart_conv, use_container_width=True)
 
     # =========================
     # 🛠️ DASHBOARD PERSONALIZADO
@@ -193,14 +196,31 @@ with aba1:
         ["Receita realizada", "Receita projetada", "Despesa realizada", "Despesa projetada"]
     )
     tipo = st.selectbox("Tipo", ["Barra", "Linha"])
+
     df_group = df.groupby(eixo)[metrica].sum().reset_index().sort_values(by=metrica, ascending=False)
 
     if tipo == "Barra":
-        chart = alt.Chart(df_group).mark_bar().encode(x=alt.X(eixo, sort="-y"), y=metrica)
+        chart_custom = alt.Chart(df_group).mark_bar().encode(
+            x=alt.X(f"{eixo}:N" if df[eixo].dtype == 'object' else f"{eixo}:O", sort="-y", title=eixo),
+            y=alt.Y(f"{metrica}:Q", title=metrica),
+            color=alt.value("#3498db"),
+            tooltip=[
+                alt.Tooltip(f"{eixo}:N", title=eixo),
+                alt.Tooltip(f"{metrica}:Q", title=metrica, format=",.2f")
+            ]
+        ).properties(height=300, width='stretch')
     else:
-        chart = alt.Chart(df_group).mark_line(point=True).encode(x=eixo, y=metrica)
+        chart_custom = alt.Chart(df_group).mark_line(point=True).encode(
+            x=alt.X(f"{eixo}:O" if df[eixo].dtype == 'object' else f"{eixo}:T", title=eixo),
+            y=alt.Y(f"{metrica}:Q", title=metrica),
+            color=alt.value("#3498db"),
+            tooltip=[
+                alt.Tooltip(f"{eixo}:N", title=eixo),
+                alt.Tooltip(f"{metrica}:Q", title=metrica, format=",.2f")
+            ]
+        ).properties(height=300, width='stretch')
 
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(chart_custom, use_container_width=True)
 
 # ================================
 # 📈 ABA 2 - EVOLUÇÃO
