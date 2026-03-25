@@ -2,20 +2,34 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime import datetime
+from streamlit_gsheets import GSheetsConnection
 
+# 🔹 Importa funções do seu projeto
 from data import carregar_dados
 from analise import mostrar_kpis
-from grafico import grafico_receita, grafico_despesa, grafico_categoria
 
+# ==========================
+# CONFIGURAÇÃO DA PÁGINA
+# ==========================
 st.set_page_config(layout="wide")
 st.title("📊 Dashboard Financeiro - Visão Diretoria")
 
-mes = st.sidebar.selectbox("Mês", list(range(1, 13)), index=datetime.now().month - 1)
-ano = st.sidebar.number_input("Ano", value=datetime.now().year)
+# ==========================
+# SELEÇÃO DE MÊS E ANO
+# ==========================
+mes = st.sidebar.selectbox(
+    "Mês", list(range(1, 13)), index=datetime.now().month - 1
+)
+ano = st.sidebar.number_input(
+    "Ano", min_value=2000, max_value=2100, value=datetime.now().year
+)
 
-# 🔥 CARREGA UMA VEZ SÓ
+# ==========================
+# CARREGAMENTO DE DADOS
+# ==========================
 df_total = carregar_dados()
 
+# Filtrar apenas dados do mês/ano selecionado
 df = df_total[
     (df_total["Data Lançamento"].dt.month == mes) &
     (df_total["Data Lançamento"].dt.year == ano)
@@ -24,6 +38,31 @@ df = df_total[
 if df.empty:
     st.warning("Sem dados para esse período")
     st.stop()
+
+# ==========================
+# CARREGAMENTO DOS SALDOS (NÃO MOSTRADOS)
+# ==========================
+def carregar_saldos():
+    conn = st.connection("gsheets", type=GSheetsConnection)
+    df_saldo = conn.read(
+        spreadsheet="https://docs.google.com/spreadsheets/d/1VyFBo9qeKQOjdTtvtuQjsVBQGQ54Yh0iYVkaH-iG4wM/edit?gid=1021654101#gid=1021654101",
+        worksheet="Saldos"
+    )
+    df_saldo["Data"] = pd.to_datetime(df_saldo["Data"], dayfirst=True)
+    for col in ["Caixa", "Bradesco", "Banco do Brasil"]:
+        df_saldo[col] = pd.to_numeric(df_saldo[col], errors="coerce").fillna(0)
+    return df_saldo
+
+df_saldo = carregar_saldos()
+
+# Filtrar saldos apenas do mês/ano selecionado
+df_saldo_filtrado = df_saldo[
+    (df_saldo["Data"].dt.month == mes) &
+    (df_saldo["Data"].dt.year == ano)
+]
+
+# Somar os saldos do mês para ajustar resultados sem mostrar ao usuário
+saldo_total_mes = df_saldo_filtrado[["Caixa", "Bradesco", "Banco do Brasil"]].sum(axis=1).sum()
 
 # ================================
 # ABAS
@@ -34,13 +73,14 @@ aba1, aba2, aba3 = st.tabs([
     "📅 Comparação de Meses"
 ])
 
+
 # ================================
 # 📊 ABA 1 - VISÃO GERAL
 # ================================
 with aba1:
 
-    # 🔥 KPIs
-    mostrar_kpis(df)
+    # 🔹 KPIs - agora usando saldo_total_mes
+    mostrar_kpis(df, saldo_inicial=saldo_total_mes)
 
     st.markdown("---")
 
@@ -63,8 +103,8 @@ with aba1:
         y="Valor",
         color="Tipo",
         color_discrete_map={
-            "Receita": "#2ecc71",
-            "Despesa": "#e74c3c"
+            "Receita": "#2ecc71",   # verde
+            "Despesa": "#e74c3c"    # vermelho
         }
     )
 
@@ -102,8 +142,8 @@ with aba1:
             y="Valor",
             color="Tipo",
             color_discrete_map={
-                "Realizado": "#2ecc71",
-                "Projetado": "#3498db"
+                "Realizado": "#2ecc71",  # verde
+                "Projetado": "#3498db"   # azul
             }
         )
 
@@ -133,8 +173,8 @@ with aba1:
             y="Valor",
             color="Tipo",
             color_discrete_map={
-                "Realizado": "#e74c3c",
-                "Projetado": "#f39c12"
+                "Realizado": "#e74c3c",  # vermelho
+                "Projetado": "#f39c12"   # laranja
             }
         )
 
@@ -155,12 +195,7 @@ with aba1:
 
     receita_total = df["Receita realizada"].sum()
 
-    df_cat = (
-        df.groupby("Plano de Contas")["Despesa realizada"]
-        .sum()
-        .reset_index()
-    )
-
+    df_cat = df.groupby("Plano de Contas")["Despesa realizada"].sum().reset_index()
     df_cat = df_cat[df_cat["Despesa realizada"] > 0]
 
     if receita_total > 0:
@@ -172,7 +207,6 @@ with aba1:
 
     if not df_cat.empty:
         top1 = df_cat.iloc[0]
-
         st.error(
             f"🚨 MAIOR GASTO: {top1['Plano de Contas']} "
             f"→ R$ {top1['Despesa realizada']:,.0f} "
@@ -222,31 +256,18 @@ with aba1:
     col1, col2, col3 = st.columns(3)
 
     total_despesas = df_cat["Despesa realizada"].sum()
+    resultado_liquido = receita_real - despesa_real + saldo_total_mes
 
     col1.metric("Total Despesas", f"R$ {total_despesas:,.0f}")
-
-    col2.metric(
-        "% da Receita",
-        f"{(total_despesas / receita_total):.1%}" if receita_total > 0 else "0%"
-    )
-
-    col3.metric(
-        "Categorias críticas (>30%)",
-        f"{(df_cat['% Receita'] > 0.3).sum()}"
-    )
+    col2.metric("% da Receita", f"{(total_despesas / receita_total):.1%}" if receita_total > 0 else "0%")
+    col3.metric("Resultado Líquido", f"R$ {resultado_liquido:,.0f}")
 
     # =========================
     # CONVÊNIOS
     # =========================
     st.subheader("💳 Convênios que mais geram receita")
 
-    df_conv = (
-        df[df["Receita realizada"] > 0]
-        .groupby("Itens")["Receita realizada"]
-        .sum()
-        .reset_index()
-    )
-
+    df_conv = df[df["Receita realizada"] > 0].groupby("Itens")["Receita realizada"].sum().reset_index()
     df_conv = df_conv.sort_values(by="Receita realizada", ascending=False)
 
     fig = px.bar(
@@ -272,30 +293,20 @@ with aba1:
     st.subheader("🛠️ Criador de Dashboard")
 
     eixo = st.selectbox("Eixo X", df.columns)
-
     metrica = st.selectbox(
         "Métrica",
         ["Receita realizada", "Receita projetada", "Despesa realizada", "Despesa projetada"]
     )
-
     tipo = st.selectbox("Tipo", ["Barra", "Linha"])
 
-    df_group = (
-        df.groupby(eixo)[metrica]
-        .sum()
-        .reset_index()
-        .sort_values(by=metrica, ascending=False)
-    )
+    df_group = df.groupby(eixo)[metrica].sum().reset_index().sort_values(by=metrica, ascending=False)
 
     if tipo == "Barra":
         fig = px.bar(df_group, x=eixo, y=metrica)
     else:
         fig = px.line(df_group, x=eixo, y=metrica)
 
-    fig.update_traces(
-        hovertemplate="<b>%{x}</b><br>Valor: R$ %{y:,.2f}<extra></extra>"
-    )
-
+    fig.update_traces(hovertemplate="<b>%{x}</b><br>Valor: R$ %{y:,.2f}")
     fig.update_layout(yaxis_tickprefix="R$ ")
 
     st.plotly_chart(fig, use_container_width=True)
