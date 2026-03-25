@@ -91,4 +91,15 @@ def carregar_dados():
         axis=1,
     )
 
+    # 🔥 CORREÇÃO (ÚNICA ADIÇÃO)
+    colunas_valor = [
+        "Receita realizada",
+        "Despesa realizada",
+        "Receita projetada",
+        "Despesa projetada"
+    ]
+
+    for col in colunas_valor:
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
     return df
