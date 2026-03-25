@@ -45,7 +45,7 @@ if df.empty:
 def carregar_saldos():
     conn = st.connection("gsheets", type=GSheetsConnection)
     df_saldo = conn.read(
-        spreadsheet="https://docs.google.com/spreadsheets/d/1VyFBo9qeKQOjdTtvtuQjsVBQGQ54Yh0iYVkaH-iG4wM/edit?gid=1021654101#gid=1021654101",
+        spreadsheet="https://docs.google.com/spreadsheets/d/1VyFBo9qeKQOjdTtvtuQjsVBQGQ54Yh0iYVkaH-iG4wM/edit?usp=sharing",
         worksheet="Saldos"
     )
     df_saldo["Data"] = pd.to_datetime(df_saldo["Data"], dayfirst=True)
