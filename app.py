@@ -38,6 +38,7 @@ aba1, aba2, aba3 = st.tabs([
 # 📊 ABA 1 - VISÃO GERAL
 # ================================
 with aba1:
+
     # 🔥 KPIs
     mostrar_kpis(df)
 
@@ -47,6 +48,7 @@ with aba1:
     # RECEITA VS DESPESA
     # =========================
     st.subheader("📊 Receita vs Despesa")
+
     receita_real = df["Receita realizada"].sum()
     despesa_real = df["Despesa realizada"].sum()
 
@@ -61,9 +63,20 @@ with aba1:
         y="Valor",
         color="Tipo",
         color_discrete_map={
-            "Receita": "#2ecc71",   
+            "Receita": "#2ecc71",
             "Despesa": "#e74c3c"
         }
+    )
+
+    fig.update_traces(
+        texttemplate="R$ %{y:,.0f}",
+        textposition="outside",
+        hovertemplate="<b>%{x}</b><br>Valor: R$ %{y:,.2f}<extra></extra>"
+    )
+
+    fig.update_layout(
+        yaxis_tickprefix="R$ ",
+        yaxis_title="Valor (R$)"
     )
 
     st.plotly_chart(fig, use_container_width=True)
@@ -75,22 +88,64 @@ with aba1:
 
     with colA:
         st.subheader("💰 Receita")
+
         receita_proj = df["Receita projetada"].sum()
+
         df_rec = pd.DataFrame({
             "Tipo": ["Projetado", "Realizado"],
             "Valor": [receita_proj, receita_real]
         })
-        fig = px.bar(df_rec, x="Tipo", y="Valor", color="Tipo")
+
+        fig = px.bar(
+            df_rec,
+            x="Tipo",
+            y="Valor",
+            color="Tipo",
+            color_discrete_map={
+                "Realizado": "#2ecc71",
+                "Projetado": "#3498db"
+            }
+        )
+
+        fig.update_traces(
+            texttemplate="R$ %{y:,.0f}",
+            textposition="outside",
+            hovertemplate="<b>%{x}</b><br>Valor: R$ %{y:,.2f}<extra></extra>"
+        )
+
+        fig.update_layout(yaxis_tickprefix="R$ ")
+
         st.plotly_chart(fig, use_container_width=True)
 
     with colB:
         st.subheader("💸 Despesa")
+
         despesa_proj = df["Despesa projetada"].sum()
+
         df_des = pd.DataFrame({
             "Tipo": ["Projetado", "Realizado"],
             "Valor": [despesa_proj, despesa_real]
         })
-        fig = px.bar(df_des, x="Tipo", y="Valor", color="Tipo")
+
+        fig = px.bar(
+            df_des,
+            x="Tipo",
+            y="Valor",
+            color="Tipo",
+            color_discrete_map={
+                "Realizado": "#e74c3c",
+                "Projetado": "#f39c12"
+            }
+        )
+
+        fig.update_traces(
+            texttemplate="R$ %{y:,.0f}",
+            textposition="outside",
+            hovertemplate="<b>%{x}</b><br>Valor: R$ %{y:,.2f}<extra></extra>"
+        )
+
+        fig.update_layout(yaxis_tickprefix="R$ ")
+
         st.plotly_chart(fig, use_container_width=True)
 
     # =========================
@@ -106,40 +161,45 @@ with aba1:
         .reset_index()
     )
 
-    # remover zeros
     df_cat = df_cat[df_cat["Despesa realizada"] > 0]
 
-    # calcular %
-    df_cat["% Receita"] = df_cat["Despesa realizada"] / receita_total
+    if receita_total > 0:
+        df_cat["% Receita"] = df_cat["Despesa realizada"] / receita_total
+    else:
+        df_cat["% Receita"] = 0
 
-    # ordenar
     df_cat = df_cat.sort_values(by="Despesa realizada", ascending=False)
 
-    # =========================
-    # 🚨 DIAGNÓSTICO AUTOMÁTICO
-    # =========================
-    top1 = df_cat.iloc[0]
+    if not df_cat.empty:
+        top1 = df_cat.iloc[0]
 
-    st.error(
-        f"🚨 MAIOR GASTO: {top1['Plano de Contas']} "
-        f"→ R$ {top1['Despesa realizada']:,.0f} "
-        f"({top1['% Receita']:.1%} da receita)"
-    )
+        st.error(
+            f"🚨 MAIOR GASTO: {top1['Plano de Contas']} "
+            f"→ R$ {top1['Despesa realizada']:,.0f} "
+            f"({top1['% Receita']:.1%} da receita)"
+        )
 
-    # =========================
-    # 📊 GRÁFICO MELHORADO
-    # =========================
-    
     fig = px.bar(
         df_cat.head(10),
         x="Plano de Contas",
         y="Despesa realizada",
         color="% Receita",
-        color_continuous_scale="Reds"
+        color_continuous_scale="Reds",
+        text="% Receita"
+    )
+
+    fig.update_traces(
+        texttemplate="%{text:.1%}",
+        textposition="outside",
+        hovertemplate="<b>%{x}</b><br>Valor: R$ %{y:,.2f}<br>% Receita: %{marker.color:.1%}<extra></extra>"
+    )
+
+    fig.update_layout(
+        yaxis_tickprefix="R$ ",
+        yaxis_title="Valor (R$)"
     )
 
     st.plotly_chart(fig, use_container_width=True)
-
 
     # =========================
     # 📋 TABELA DETALHADA
@@ -153,6 +213,7 @@ with aba1:
         }),
         use_container_width=True
     )
+
     # =========================
     # 📉 RESUMO DE IMPACTO
     # =========================
@@ -160,14 +221,13 @@ with aba1:
 
     col1, col2, col3 = st.columns(3)
 
-    col1.metric(
-        "Total Despesas",
-        f"R$ {df_cat['Despesa realizada'].sum():,.0f}"
-    )
+    total_despesas = df_cat["Despesa realizada"].sum()
+
+    col1.metric("Total Despesas", f"R$ {total_despesas:,.0f}")
 
     col2.metric(
         "% da Receita",
-        f"{(df_cat['Despesa realizada'].sum()/receita_total):.1%}"
+        f"{(total_despesas / receita_total):.1%}" if receita_total > 0 else "0%"
     )
 
     col3.metric(
@@ -175,15 +235,17 @@ with aba1:
         f"{(df_cat['% Receita'] > 0.3).sum()}"
     )
 
-
     # =========================
     # CONVÊNIOS
     # =========================
     st.subheader("💳 Convênios que mais geram receita")
 
-    df_conv = df[df["Receita realizada"] > 0] \
-        .groupby("Itens")["Receita realizada"] \
-        .sum().reset_index()
+    df_conv = (
+        df[df["Receita realizada"] > 0]
+        .groupby("Itens")["Receita realizada"]
+        .sum()
+        .reset_index()
+    )
 
     df_conv = df_conv.sort_values(by="Receita realizada", ascending=False)
 
@@ -193,6 +255,14 @@ with aba1:
         y="Receita realizada"
     )
 
+    fig.update_traces(
+        texttemplate="R$ %{y:,.0f}",
+        textposition="outside",
+        hovertemplate="<b>%{x}</b><br>Valor: R$ %{y:,.2f}<extra></extra>"
+    )
+
+    fig.update_layout(yaxis_tickprefix="R$ ")
+
     st.plotly_chart(fig, use_container_width=True)
 
     # =========================
@@ -200,22 +270,33 @@ with aba1:
     # =========================
     st.markdown("---")
     st.subheader("🛠️ Criador de Dashboard")
+
     eixo = st.selectbox("Eixo X", df.columns)
+
     metrica = st.selectbox(
         "Métrica",
         ["Receita realizada", "Receita projetada", "Despesa realizada", "Despesa projetada"]
     )
-    tipo = st.selectbox("Tipo", ["Barra", "Linha"])
-    df_group = df.groupby(eixo)[metrica].sum().reset_index().sort_values(by=metrica, ascending=False)
 
-    # 🔥 CORREÇÃO ALTair (colunas dinâmicas)
-    x_col = f"{eixo}:N"
-    y_col = f"{metrica}:Q"
+    tipo = st.selectbox("Tipo", ["Barra", "Linha"])
+
+    df_group = (
+        df.groupby(eixo)[metrica]
+        .sum()
+        .reset_index()
+        .sort_values(by=metrica, ascending=False)
+    )
 
     if tipo == "Barra":
         fig = px.bar(df_group, x=eixo, y=metrica)
     else:
         fig = px.line(df_group, x=eixo, y=metrica)
+
+    fig.update_traces(
+        hovertemplate="<b>%{x}</b><br>Valor: R$ %{y:,.2f}<extra></extra>"
+    )
+
+    fig.update_layout(yaxis_tickprefix="R$ ")
 
     st.plotly_chart(fig, use_container_width=True)
 
@@ -226,69 +307,134 @@ with aba2:
 
     df_evolucao = df_total.copy()
 
-    # Criar coluna datetime para ordenar corretamente
-    df_evolucao["Mes_dt"] = pd.to_datetime(df_evolucao["Data Lançamento"].dt.to_period("M").dt.to_timestamp())
+    # Base mensal
+    df_evolucao["Mes_dt"] = pd.to_datetime(
+        df_evolucao["Data Lançamento"]
+    ).dt.to_period("M").dt.to_timestamp()
 
-    # Agrupar por mês (datetime)
     df_mes = df_evolucao.groupby("Mes_dt").agg({
         "Receita realizada": "sum",
         "Despesa realizada": "sum"
-    }).reset_index()
+    }).reset_index().sort_values("Mes_dt")
 
-    # 🔥 remove meses zerados
+    # Remover meses zerados
     df_mes = df_mes[
         (df_mes["Receita realizada"] > 0) |
         (df_mes["Despesa realizada"] > 0)
     ]
 
+    # 🔥 NOME DOS MESES EM PT-BR
+    meses = {
+        1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
+        5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
+        9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
+    }
+
+    df_mes["Mes_str"] = df_mes["Mes_dt"].apply(
+        lambda x: f"{meses[x.month]}/{x.year}"
+    )
+
     # Acumulados
     df_mes["Receita Acumulada"] = df_mes["Receita realizada"].cumsum()
     df_mes["Despesa Acumulada"] = df_mes["Despesa realizada"].cumsum()
 
-    # Transformar para formato longo para o gráfico
     df_long = df_mes.melt(
-        id_vars="Mes_dt",
+        id_vars="Mes_str",
         value_vars=["Receita Acumulada", "Despesa Acumulada"],
         var_name="Tipo",
         value_name="Valor"
     )
 
-    # Gráfico Altair com eixo temporal mostrando só mês/ano
     fig = px.line(
         df_long,
-        x="Mes_dt",
+        x="Mes_str",
         y="Valor",
-        color="Tipo"
+        color="Tipo",
+        category_orders={"Mes_str": df_mes["Mes_str"].tolist()}
+    )
+
+    fig.update_traces(
+        hovertemplate="Mês: %{x}<br>Valor: R$ %{y:,.2f}"
+    )
+
+    fig.update_layout(
+        yaxis=dict(tickprefix="R$ ", title="Valor (R$)")
     )
 
     st.plotly_chart(fig, use_container_width=True)
+    
 # ================================
 # 📅 ABA 3 - COMPARAÇÃO DE MESES
 # ================================
 with aba3:
+
     df_comp = df_total.copy()
-    df_comp["Mes"] = df_comp["Data Lançamento"].dt.to_period("M").dt.to_timestamp()
+
+    # 🔥 Garantir datetime correto
+    df_comp["Mes"] = pd.to_datetime(
+        df_comp["Data Lançamento"].dt.to_period("M").dt.to_timestamp()
+    )
+
     df_mes = df_comp.groupby("Mes").agg({
         "Receita realizada": "sum",
         "Despesa realizada": "sum",
         "Receita projetada": "sum",
         "Despesa projetada": "sum"
     }).reset_index().sort_values("Mes")
-    df_mes["Resultado"] = df_mes["Receita realizada"] - df_mes["Despesa realizada"]
-    df_mes["Crescimento Receita (%)"] = df_mes["Receita realizada"].pct_change().fillna(0)*100
-    df_mes["Crescimento Despesa (%)"] = df_mes["Despesa realizada"].pct_change().fillna(0)*100
 
-    # KPIs de Evolução
+    # 🔥 Resultado
+    df_mes["Resultado"] = df_mes["Receita realizada"] - df_mes["Despesa realizada"]
+
+    # 🔥 Crescimento %
+    df_mes["Crescimento Receita (%)"] = (
+        df_mes["Receita realizada"].pct_change().fillna(0)
+    )
+
+    df_mes["Crescimento Despesa (%)"] = (
+        df_mes["Despesa realizada"].pct_change().fillna(0)
+    )
+
+    # =========================
+    # KPIs
+    # =========================
     col1, col2, col3 = st.columns(3)
-    df_mes_filtrado = df_mes[(df_mes["Receita realizada"] > 0) | (df_mes["Despesa realizada"] > 0)]
+
+    df_mes_filtrado = df_mes[
+        (df_mes["Receita realizada"] > 0) |
+        (df_mes["Despesa realizada"] > 0)
+    ]
+
     if len(df_mes_filtrado) >= 2:
         ultima = df_mes_filtrado.iloc[-1]
-        col1.metric("Receita (último mês)", f"R$ {ultima['Receita realizada']:,.0f}", delta=f"{ultima['Crescimento Receita (%)']:.1f}%")
-        col2.metric("Despesa (último mês)", f"R$ {ultima['Despesa realizada']:,.0f}", delta=f"{ultima['Crescimento Despesa (%)']:.1f}%", delta_color="inverse")
-        col3.metric("Resultado", f"R$ {ultima['Resultado']:,.0f}")
 
-    # Gráfico Receita x Despesa
-    df_long = df_mes.melt(id_vars="Mes", value_vars=["Receita realizada", "Despesa realizada"], var_name="Tipo", value_name="Valor")
+        col1.metric(
+            "Receita (último mês)",
+            f"R$ {ultima['Receita realizada']:,.0f}",
+            delta=f"{ultima['Crescimento Receita (%)']:.1%}"
+        )
+
+        col2.metric(
+            "Despesa (último mês)",
+            f"R$ {ultima['Despesa realizada']:,.0f}",
+            delta=f"{ultima['Crescimento Despesa (%)']:.1%}",
+            delta_color="inverse"
+        )
+
+        col3.metric(
+            "Resultado",
+            f"R$ {ultima['Resultado']:,.0f}"
+        )
+
+    # =========================
+    # GRÁFICO Receita x Despesa
+    # =========================
+    df_long = df_mes.melt(
+        id_vars="Mes",
+        value_vars=["Receita realizada", "Despesa realizada"],
+        var_name="Tipo",
+        value_name="Valor"
+    )
+
     fig = px.line(
         df_long,
         x="Mes",
@@ -296,21 +442,48 @@ with aba3:
         color="Tipo"
     )
 
+    # 🔥 Hover corrigido
+    fig.update_traces(
+        hovertemplate="<b>%{x|%B/%Y}</b><br>Valor: R$ %{y:,.2f}<extra></extra>"
+    )
+
+    fig.update_layout(
+        yaxis_tickprefix="R$ "
+    )
+
     st.plotly_chart(fig, use_container_width=True)
 
-    # Gráfico Resultado
+    # =========================
+    # GRÁFICO Resultado
+    # =========================
     fig = px.bar(
         df_mes,
         x="Mes",
         y="Resultado",
         color="Resultado",
-        color_continuous_scale=["#e74c3c", "#2ecc71"]
+        color_continuous_scale=["#e74c3c", "#2ecc71"],
+        text="Resultado"  # 👈 volta o valor no topo
+    )
+
+    fig.update_traces(
+        texttemplate="R$ %{text:,.0f}",   # 👈 valor formatado
+        textposition="outside",
+        hovertemplate="<b>%{x|%B/%Y}</b><br>Resultado: R$ %{y:,.2f}<extra></extra>"
+    )
+
+    fig.update_layout(
+        yaxis_tickprefix="R$ "
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # Tabela comparativa
-    df_mes["Mes"] = pd.to_datetime(df_mes["Mes"]).dt.strftime("%b/%Y")
+    # =========================
+    # TABELA
+    # =========================
+
+    # 🔥 Formatar mês/ano (Abril/2026)
+    df_mes["Mes"] = pd.to_datetime(df_mes["Mes"]).dt.strftime("%B/%Y")
+
     st.dataframe(
         df_mes.style.format({
             "Receita realizada": "R$ {:,.2f}",
@@ -318,8 +491,8 @@ with aba3:
             "Receita projetada": "R$ {:,.2f}",
             "Despesa projetada": "R$ {:,.2f}",
             "Resultado": "R$ {:,.2f}",
-            "Crescimento Receita (%)": "{:.1f}%",
-            "Crescimento Despesa (%)": "{:.1f}%"
+            "Crescimento Receita (%)": "{:.1%}",
+            "Crescimento Despesa (%)": "{:.1%}"
         }),
         use_container_width=True
     )
