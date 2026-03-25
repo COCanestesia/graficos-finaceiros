@@ -235,23 +235,31 @@ with aba2:
         value_name="Valor"
     )
 
+    # Corrigir tipos
+    df_long["Mes"] = pd.to_datetime(df_long["Mes"])
+    df_long["Valor"] = pd.to_numeric(df_long["Valor"], errors='coerce').fillna(0)
+    df_long["Tipo"] = df_long["Tipo"].astype(str)
+
     # Gráfico Altair
-    st.altair_chart(
-        alt.Chart(df_long).mark_line(point=True).encode(
-            x=alt.X("Mes:T", title="Mês", axis=alt.Axis(format="%b/%y")),  # eixo de tempo
-            y="Valor:Q",
-            color="Tipo:N"
-        ),
-        use_container_width=True
-    )
+    chart = alt.Chart(df_long).mark_line(point=True).encode(
+        x=alt.X("Mes:T", title="Mês", axis=alt.Axis(format="%b/%y")),
+        y=alt.Y("Valor:Q", title="Valor (R$)"),
+        color=alt.Color("Tipo:N"),
+        tooltip=[
+            alt.Tooltip("Mes:T", title="Mês", format="%b/%Y"),
+            "Tipo:N",
+            alt.Tooltip("Valor:Q", format=",.2f")
+        ]
+    ).properties(title="📈 Evolução Acumulada: Receita x Despesa")
+
+    st.altair_chart(chart, width='stretch')
+
+
 # ================================
 # 📅 ABA 3 - COMPARAÇÃO DE MESES
 # ================================
 with aba3:
 
-    # ================================
-    # 📊 COMPARAÇÃO AUTOMÁTICA ENTRE MESES
-    # ================================
     st.markdown("---")
     st.subheader("📊 Comparação Automática de Meses")
     
@@ -327,14 +335,15 @@ with aba3:
     )
 
     # Corrigir tipos
-    df_long["Mes_dt"] = pd.to_datetime(df_long["Mes"])
+    df_long["Mes"] = pd.to_datetime(df_long["Mes"])
     df_long["Valor"] = pd.to_numeric(df_long["Valor"], errors='coerce').fillna(0)
+    df_long["Tipo"] = df_long["Tipo"].astype(str)
 
     chart = alt.Chart(df_long).mark_line(point=True).encode(
-        x=alt.X("Mes_dt:T", title="Mês", axis=alt.Axis(format="%b/%y")),
+        x=alt.X("Mes:T", title="Mês", axis=alt.Axis(format="%b/%y")),
         y=alt.Y("Valor:Q", title="Valor (R$)"),
         color=alt.Color(
-            "Tipo",
+            "Tipo:N",
             scale=alt.Scale(
                 domain=["Receita realizada", "Despesa realizada"],
                 range=["#2ecc71", "#e74c3c"]
@@ -342,13 +351,11 @@ with aba3:
             title=""
         ),
         tooltip=[
-            alt.Tooltip("Mes_dt:T", title="Mês", format="%b/%Y"),
-            "Tipo",
-            alt.Tooltip("Valor", format=",.2f")
+            alt.Tooltip("Mes:T", title="Mês", format="%b/%Y"),
+            "Tipo:N",
+            alt.Tooltip("Valor:Q", format=",.2f")
         ]
-    ).properties(
-        title="📈 Evolução Mensal: Receita x Despesa"
-    )
+    ).properties(title="📈 Evolução Mensal: Receita x Despesa")
 
     st.altair_chart(chart, width='stretch')
 
