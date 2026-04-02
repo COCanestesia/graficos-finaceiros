@@ -62,8 +62,12 @@ df_saldo_filtrado = df_saldo[
 ]
 
 # Somar os saldos do mês para ajustar resultados sem mostrar ao usuário
-saldo_total_mes = df_saldo_filtrado[["Caixa", "Bradesco", "Banco do Brasil"]].sum(axis=1).sum()
-
+if not df_saldo_filtrado.empty:
+    ultimo_saldo = df_saldo_filtrado.sort_values("Data").iloc[-1]
+    saldo_total_mes = ultimo_saldo[["Caixa", "Bradesco", "Banco do Brasil"]].sum()
+else:
+    saldo_total_mes = 0
+    
 # ================================
 # ABAS
 # ================================
